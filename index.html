@@ -1,0 +1,2680 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="mobile-web-app-capable" content="yes">
+  <title>Smart Campus Navigation System</title>
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Phosphor Icons (for premium look) -->
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+  <!-- App Styles -->
+  <link rel="stylesheet" href="style.css?v=4.3">
+
+  <!-- Main App Container -->
+  <div class="app-container">
+    <!-- Top Professional Navbar -->
+    <nav class="header-navbar">
+      <p class="nav-subtitle">CAMPUS NAVIGATION DASHBOARD</p>
+      <div class="logo-container">
+        <h1 class="nav-title">SRI VASAVI ENGINEERING COLLEGE</h1>
+      </div>
+      <p class="nav-address">Pedatadepalli, Tadepalligudem, A.P, India</p>
+    </nav>
+
+    <main class="main-dashboard">
+      <!-- Left Controls Panel -->
+      <aside class="sidebar-controls">
+        <div class="glass-panel search-card">
+          <h2 class="card-label">Destination</h2>
+          <div class="input-group">
+            <i class="ph ph-magnifying-glass input-icon"></i>
+            <input type="text" id="destination-search" class="premium-select" placeholder="Let's Go!" autocomplete="off"
+              list="dest-list">
+            <button id="mic-search-btn" class="mic-search-btn" title="Voice Search">
+              <i class="ph ph-microphone"></i>
+            </button>
+            <datalist id="dest-list"></datalist>
+          </div>
+
+          <div class="action-grid">
+            <button id="start-nav-btn" class="dashboard-btn primary-btn disabled" disabled>
+              <i class="ph ph-navigation-arrow"></i> START
+            </button>
+            <button id="stop-nav-btn-mobile" class="dashboard-btn danger-btn mobile-only hidden">
+              EXIT NAVIGATION
+            </button>
+            <button id="voice-toggle-btn" class="dashboard-btn icon-btn" title="Voice">
+              <i class="ph ph-speaker-high" id="voice-icon"></i>
+            </button>
+          </div>
+        </div>
+
+        <div id="route-info-panel" class="glass-panel route-info-card hidden">
+          <div class="route-header">
+            <button id="mobile-back-btn" class="mobile-back-btn mobile-only" title="Back to Map">
+              <i class="ph ph-arrow-left"></i>
+            </button>
+            <i class="ph ph-path"></i>
+            <span>Route Details</span>
+          </div>
+          <div class="route-stats">
+            <div class="stat-item">
+              <span class="val" id="stat-distance">--</span>
+              <span class="lab">Meters</span>
+            </div>
+            <div class="stat-item">
+              <span class="val" id="stat-time">--</span>
+              <span class="lab">Minutes</span>
+            </div>
+          </div>
+          <div class="instructions-scroll">
+            <ul id="instructions-list" class="instructions-list"></ul>
+          </div>
+          <button id="stop-nav-btn" class="dashboard-btn danger-btn desktop-only">Exit Navigation</button>
+        </div>
+      </aside>
+
+      <!-- Right Map Box -->
+      <section class="map-view-box">
+        <div id="map" class="boxed-map"></div>
+        <button id="recenter-btn" class="map-action-btn" title="Recenter View">
+          <i class="ph ph-crosshair"></i>
+        </button>
+
+        <!-- Mobile Navigation HUD -->
+        <div id="mobile-nav-hud" class="mobile-nav-hud mobile-only hidden">
+          <div class="hud-item">
+            <i class="ph ph-navigation-arrow"></i>
+            <span id="hud-distance">-- m</span>
+          </div>
+          <div class="hud-divider"></div>
+          <div class="hud-item">
+            <i class="ph ph-clock"></i>
+            <span id="hud-time">-- min</span>
+          </div>
+        </div>
+
+        <button id="mobile-route-toggle" class="map-action-btn mobile-only hidden" title="Route Details">
+          <i class="ph ph-list-bullets"></i>
+        </button>
+      </section>
+    </main>
+  </div>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+  <!-- Turf.js for Spatial Calculations -->
+  <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
+
+  <script>window.campusData = {
+      "type": "FeatureCollection",
+      "features": [
+        {
+          "type": "Feature",
+          "properties": {
+            "road_id": "R1",
+            "type": "road"
+          },
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                81.4939044,
+                16.8593171
+              ],
+              [
+                81.4941352,
+                16.8593445
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "road_id": "R2",
+            "type": "road"
+          },
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                81.4941352,
+                16.8593445
+              ],
+              [
+                81.4941995,
+                16.8585092
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "road_id": "R3",
+            "type": "road"
+          },
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                81.4941995,
+                16.8585092
+              ],
+              [
+                81.4942159,
+                16.8583537
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "road_id": "R4",
+            "type": "road"
+          },
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                81.4942222,
+                16.8582377
+              ],
+              [
+                81.4941997,
+                16.8579948
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "road_id": "R5",
+            "type": "road"
+          },
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                81.4941997,
+                16.8579948
+              ],
+              [
+                81.4945658,
+                16.8580253
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "road_id": "R6",
+            "type": "road"
+          },
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                81.4945658,
+                16.8580253
+              ],
+              [
+                81.4949182,
+                16.8580526
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "road_id": "R7",
+            "type": "road"
+          },
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                81.4949182,
+                16.8580526
+              ],
+              [
+                81.494928,
+                16.8578557
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "road_id": "R8",
+            "type": "road"
+          },
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                81.494928,
+                16.8578557
+              ],
+              [
+                81.4945796,
+                16.8578187
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "road_id": "R9",
+            "type": "road"
+          },
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                81.4945796,
+                16.8578187
+              ],
+              [
+                81.4942338,
+                16.8577841
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "road_id": "R10",
+            "type": "road"
+          },
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                81.4942338,
+                16.8577841
+              ],
+              [
+                81.4941997,
+                16.8579948
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "road_id": "R11",
+            "type": "road"
+          },
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                81.4941352,
+                16.8593445
+              ],
+              [
+                81.4943199,
+                16.8593656
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "road_id": "R12",
+            "type": "road"
+          },
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                81.4943199,
+                16.8593656
+              ],
+              [
+                81.4944147,
+                16.858971
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "road_id": "R13",
+            "type": "road"
+          },
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                81.4944147,
+                16.858971
+              ],
+              [
+                81.4944537,
+                16.8593763
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "road_id": "R14",
+            "type": "road"
+          },
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                81.4943199,
+                16.8593656
+              ],
+              [
+                81.4944537,
+                16.8593763
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "road_id": "R15",
+            "type": "road"
+          },
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                81.4944537,
+                16.8593763
+              ],
+              [
+                81.4947278,
+                16.8594126
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "road_id": "R16",
+            "type": "road"
+          },
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                81.4947278,
+                16.8594126
+              ],
+              [
+                81.49485,
+                16.8591113
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "road_id": "R17",
+            "type": "road"
+          },
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                81.49485,
+                16.8591113
+              ],
+              [
+                81.4948775,
+                16.8586463
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "road_id": "R18",
+            "type": "road"
+          },
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                81.4948775,
+                16.8586463
+              ],
+              [
+                81.4948867,
+                16.8584737
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "road_id": "R19",
+            "type": "road"
+          },
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                81.4948867,
+                16.8584737
+              ],
+              [
+                81.4948592,
+                16.8582456
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "road_id": "R20",
+            "type": "road"
+          },
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                81.4948592,
+                16.8582456
+              ],
+              [
+                81.4949182,
+                16.8580526
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "road_id": "R21",
+            "type": "road"
+          },
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                81.4948867,
+                16.8584737
+              ],
+              [
+                81.4951692,
+                16.8585097
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "road_id": "R22",
+            "type": "road"
+          },
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                81.4951692,
+                16.8585097
+              ],
+              [
+                81.4954762,
+                16.8585318
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "road_id": "R23",
+            "type": "road",
+            "name": "Diploma"
+          },
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                81.4954762,
+                16.8585318
+              ],
+              [
+                81.4960112,
+                16.8585757
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "road_id": "R24",
+            "type": "road"
+          },
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                81.4960112,
+                16.8585757
+              ],
+              [
+                81.4967187,
+                16.8586408
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "road_id": "R25",
+            "type": "road"
+          },
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                81.4949182,
+                16.8580526
+              ],
+              [
+                81.4952401,
+                16.8580779
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "road_id": "R26",
+            "type": "road"
+          },
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                81.4952401,
+                16.8580779
+              ],
+              [
+                81.4955416,
+                16.8581011
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "road_id": "R27",
+            "type": "road"
+          },
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                81.4954762,
+                16.8585318
+              ],
+              [
+                81.4955416,
+                16.8581011
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "road_id": "R28",
+            "type": "road"
+          },
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                81.49485,
+                16.8591113
+              ],
+              [
+                81.4951317,
+                16.8591595
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "road_id": "R29",
+            "type": "road"
+          },
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                81.4951317,
+                16.8591595
+              ],
+              [
+                81.4955345,
+                16.859222
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "road_id": "R30",
+            "type": "road"
+          },
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                81.4955345,
+                16.859222
+              ],
+              [
+                81.4954982,
+                16.858715
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "road_id": "R31",
+            "type": "road"
+          },
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                81.4954982,
+                16.858715
+              ],
+              [
+                81.4954762,
+                16.8585318
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "road_id": "R32",
+            "type": "road"
+          },
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                81.4948775,
+                16.8586463
+              ],
+              [
+                81.4954982,
+                16.858715
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "road_id": "R33",
+            "type": "road"
+          },
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                81.4955345,
+                16.859222
+              ],
+              [
+                81.4958283,
+                16.8592706
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "road_id": "R34",
+            "type": "road"
+          },
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                81.4958283,
+                16.8592706
+              ],
+              [
+                81.4965576,
+                16.8593574
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "road_id": "R35",
+            "type": "road"
+          },
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                81.4954982,
+                16.858715
+              ],
+              [
+                81.4962238,
+                16.8587949
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "road_id": "R36",
+            "type": "road"
+          },
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                81.4962238,
+                16.8587949
+              ],
+              [
+                81.496681,
+                16.8588122
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "road_id": "R37",
+            "type": "road"
+          },
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                81.4967187,
+                16.8586408
+              ],
+              [
+                81.496681,
+                16.8588122
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "road_id": "R38",
+            "type": "road"
+          },
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                81.496681,
+                16.8588122
+              ],
+              [
+                81.4965576,
+                16.8593574
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "road_id": "R39",
+            "type": "road"
+          },
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                81.4955416,
+                16.8581011
+              ],
+              [
+                81.4957645,
+                16.8581048
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "road_id": "R40",
+            "type": "road"
+          },
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                81.4957645,
+                16.8581048
+              ],
+              [
+                81.4958832,
+                16.8581233
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "road_id": "R41",
+            "type": "road"
+          },
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                81.4958832,
+                16.8581233
+              ],
+              [
+                81.4961051,
+                16.858141
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "road_id": "R42",
+            "type": "road"
+          },
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                81.4961051,
+                16.858141
+              ],
+              [
+                81.4967818,
+                16.8581941
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "road_id": "R43",
+            "type": "road"
+          },
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                81.4967187,
+                16.8586408
+              ],
+              [
+                81.4967818,
+                16.8581941
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "road_id": "R44",
+            "type": "road"
+          },
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                81.494928,
+                16.8578557
+              ],
+              [
+                81.4952572,
+                16.8578876
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "road_id": "R45",
+            "type": "road"
+          },
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                81.4952572,
+                16.8578876
+              ],
+              [
+                81.4955611,
+                16.8579089
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "road_id": "R46",
+            "type": "road"
+          },
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                81.4955611,
+                16.8579089
+              ],
+              [
+                81.4957242,
+                16.8579373
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "road_id": "R47",
+            "type": "road"
+          },
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                81.4955611,
+                16.8579089
+              ],
+              [
+                81.4955416,
+                16.8581011
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "road_id": "R48",
+            "type": "road"
+          },
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                81.4957242,
+                16.8579373
+              ],
+              [
+                81.495902,
+                16.8579515
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "road_id": "R49",
+            "type": "road"
+          },
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                81.4958832,
+                16.8581233
+              ],
+              [
+                81.495902,
+                16.8579515
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "road_id": "R50",
+            "type": "road"
+          },
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                81.494928,
+                16.8578557
+              ],
+              [
+                81.4949267,
+                16.8576823
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "road_id": "R51",
+            "type": "road"
+          },
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                81.4949267,
+                16.8576823
+              ],
+              [
+                81.4942657,
+                16.8576191
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "road_id": "R52",
+            "type": "road"
+          },
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                81.4949267,
+                16.8576823
+              ],
+              [
+                81.49531,
+                16.8577287
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "road_id": "R53",
+            "type": "road"
+          },
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                81.49531,
+                16.8577287
+              ],
+              [
+                81.4955479,
+                16.8577498
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "road_id": "R54",
+            "type": "road"
+          },
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                81.4955611,
+                16.8579089
+              ],
+              [
+                81.4955479,
+                16.8577498
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "road_id": "R55",
+            "type": "road"
+          },
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                81.4955479,
+                16.8577498
+              ],
+              [
+                81.4959132,
+                16.857798
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "road_id": "R56",
+            "type": "road"
+          },
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                81.4959132,
+                16.857798
+              ],
+              [
+                81.4961355,
+                16.8578264
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "road_id": "R55",
+            "type": "road"
+          },
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                81.495902,
+                16.8579515
+              ],
+              [
+                81.4959132,
+                16.857798
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "road_id": "R56",
+            "type": "road"
+          },
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                81.495902,
+                16.8579515
+              ],
+              [
+                81.4961207,
+                16.8579505
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "road_id": "R57",
+            "type": "road"
+          },
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                81.4945658,
+                16.8580253
+              ],
+              [
+                81.4944403,
+                16.8580473
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "road_id": "R58",
+            "type": "road"
+          },
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                81.4942159,
+                16.8583537
+              ],
+              [
+                81.4942222,
+                16.8582377
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "road_id": "R59",
+            "type": "road"
+          },
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                81.4942159,
+                16.8583537
+              ],
+              [
+                81.4944082,
+                16.8583779
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "road_id": "R60",
+            "type": "road"
+          },
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                81.4944403,
+                16.8580473
+              ],
+              [
+                81.4944218,
+                16.8582079
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "road_id": "R61",
+            "type": "road"
+          },
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                81.4944082,
+                16.8583779
+              ],
+              [
+                81.4944218,
+                16.8582079
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "road_id": "R62",
+            "type": "road"
+          },
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                81.4944082,
+                16.8583779
+              ],
+              [
+                81.4945717,
+                16.8583696
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "road_id": "R63",
+            "type": "road"
+          },
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                81.4948867,
+                16.8584737
+              ],
+              [
+                81.4945717,
+                16.8583696
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "road_id": "R64",
+            "type": "road"
+          },
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                81.4941352,
+                16.8593445
+              ],
+              [
+                81.4940615,
+                16.8595097
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "road_id": "R65",
+            "type": "road"
+          },
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                81.4940615,
+                16.8595097
+              ],
+              [
+                81.4940345,
+                16.8596787
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "road_id": "R66",
+            "type": "road"
+          },
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                81.4940345,
+                16.8596787
+              ],
+              [
+                81.4939781,
+                16.8599588
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "road_id": "R67",
+            "type": "road"
+          },
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                81.4940615,
+                16.8595097
+              ],
+              [
+                81.49394,
+                16.8595049
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "road_id": "R68",
+            "type": "road"
+          },
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                81.4939781,
+                16.8599588
+              ],
+              [
+                81.4938646,
+                16.8599479
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "road_id": "R69",
+            "type": "road"
+          },
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                81.4943199,
+                16.8593656
+              ],
+              [
+                81.4943377,
+                16.8594657
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "road_id": "R70",
+            "type": "road"
+          },
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                81.4947278,
+                16.8594126
+              ],
+              [
+                81.4948263,
+                16.8595512
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "road_id": "R71",
+            "type": "road"
+          },
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                81.4948263,
+                16.8595512
+              ],
+              [
+                81.4950967,
+                16.8595865
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "road_id": "R72",
+            "type": "road"
+          },
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                81.4950967,
+                16.8595865
+              ],
+              [
+                81.4950752,
+                16.8597423
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "road_id": "R73",
+            "type": "road"
+          },
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                81.4955345,
+                16.859222
+              ],
+              [
+                81.4952687,
+                16.859607
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "road_id": "R74",
+            "type": "road"
+          },
+          "geometry": {
+            "type": "LineString",
+            "coordinates": [
+              [
+                81.4967818,
+                16.8581941
+              ],
+              [
+                81.4968253,
+                16.8575317
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "type": "admin",
+            "name": "Admin office",
+            "entry_node": [
+              81.4944147,
+              16.858971
+            ]
+          },
+          "geometry": {
+            "type": "Polygon",
+            "coordinates": [
+              [
+                [
+                  81.4942378,
+                  16.8588562
+                ],
+                [
+                  81.4942735,
+                  16.8585383
+                ],
+                [
+                  81.4947129,
+                  16.8585759
+                ],
+                [
+                  81.4946772,
+                  16.8588938
+                ],
+                [
+                  81.49452,
+                  16.8588733
+                ],
+                [
+                  81.4945093,
+                  16.8589212
+                ],
+                [
+                  81.49437,
+                  16.8589178
+                ],
+                [
+                  81.4943628,
+                  16.8588665
+                ],
+                [
+                  81.4942378,
+                  16.8588562
+                ]
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "type": "building",
+            "name": "ECE",
+            "entry_node": [
+              81.4945717,
+              16.8583696
+            ]
+          },
+          "geometry": {
+            "type": "Polygon",
+            "coordinates": [
+              [
+                [
+                  81.4942271,
+                  16.8585007
+                ],
+                [
+                  81.4948272,
+                  16.8585588
+                ],
+                [
+                  81.4948415,
+                  16.8584323
+                ],
+                [
+                  81.4942414,
+                  16.8583742
+                ],
+                [
+                  81.4942271,
+                  16.8585007
+                ]
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "type": "building",
+            "name": "ECT",
+            "entry_node": [81.4944218, 16.8582079]
+          },
+          "geometry": {
+            "type": "Polygon",
+            "coordinates": [
+              [
+                [
+                  81.4942537,
+                  16.8583418
+                ],
+                [
+                  81.4943843,
+                  16.858363
+                ],
+                [
+                  81.4944174,
+                  16.8580322
+                ],
+                [
+                  81.4942887,
+                  16.8580181
+                ],
+                [
+                  81.4942537,
+                  16.8583418
+                ]
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "type": "building",
+            "name": "CSE"
+            , "entry_node": [81.4945658, 16.8580253]
+          },
+          "geometry": {
+            "type": "Polygon",
+            "coordinates": [
+              [
+                [
+                  81.4942685,
+                  16.8579565
+                ],
+                [
+                  81.4942813,
+                  16.857821
+                ],
+                [
+                  81.4948697,
+                  16.8578738
+                ],
+                [
+                  81.494855,
+                  16.8580128
+                ],
+                [
+                  81.4945626,
+                  16.8579829
+                ],
+                [
+                  81.4942685,
+                  16.8579565
+                ]
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "type": "building",
+            "name": "CST",
+            "entry_node": [81.4945796, 16.8578187]
+          },
+          "geometry": {
+            "type": "Polygon",
+            "coordinates": [
+              [
+                [
+                  81.4943034,
+                  16.85777
+                ],
+                [
+                  81.4948109,
+                  16.8578175
+                ],
+                [
+                  81.4948182,
+                  16.8576996
+                ],
+                [
+                  81.4942997,
+                  16.8576609
+                ],
+                [
+                  81.4943034,
+                  16.85777
+                ]
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "type": "building",
+            "name": "Silver jubilee",
+            "entry_node": [81.4949267, 16.8576823]
+          },
+          "geometry": {
+            "type": "Polygon",
+            "coordinates": [
+              [
+                [
+                  81.4943052,
+                  16.857594
+                ],
+                [
+                  81.4950149,
+                  16.8576662
+                ],
+                [
+                  81.495026,
+                  16.8575799
+                ],
+                [
+                  81.4943199,
+                  16.8575095
+                ],
+                [
+                  81.4943052,
+                  16.857594
+                ]
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "type": "building",
+            "name": "mech-lab",
+            "entry_node": [81.49531, 16.8577287]
+          },
+          "geometry": {
+            "type": "Polygon",
+            "coordinates": [
+              [
+                [
+                  81.4950241,
+                  16.8576662
+                ],
+                [
+                  81.4958231,
+                  16.8577562
+                ],
+                [
+                  81.4958339,
+                  16.8576668
+                ],
+                [
+                  81.4950374,
+                  16.8575813
+                ],
+                [
+                  81.4950241,
+                  16.8576662
+                ]
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "type": "building",
+            "name": "MECH",
+            "entry_node": [81.4952572, 16.8578876]
+          },
+          "geometry": {
+            "type": "Polygon",
+            "coordinates": [
+              [
+                [
+                  81.4949912,
+                  16.8578373
+                ],
+                [
+                  81.494998,
+                  16.8577389
+                ],
+                [
+                  81.4954959,
+                  16.857787
+                ],
+                [
+                  81.4954845,
+                  16.8578919
+                ],
+                [
+                  81.4949912,
+                  16.8578373
+                ]
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "type": "building",
+            "name": "EEE",
+            "entry_node": [81.4952401, 16.8580779]
+          },
+          "geometry": {
+            "type": "Polygon",
+            "coordinates": [
+              [
+                [
+                  81.4949432,
+                  16.8580362
+                ],
+                [
+                  81.4955302,
+                  16.8580777
+                ],
+                [
+                  81.4955485,
+                  16.8579269
+                ],
+                [
+                  81.4949569,
+                  16.8578854
+                ],
+                [
+                  81.4949432,
+                  16.8580362
+                ]
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "type": "building",
+            "name": "civil",
+            "entry_node": [81.4957242, 16.8579373]
+          },
+          "geometry": {
+            "type": "Polygon",
+            "coordinates": [
+              [
+                [
+                  81.495569,
+                  16.8578919
+                ],
+                [
+                  81.4958568,
+                  16.8579247
+                ],
+                [
+                  81.4958773,
+                  16.8578307
+                ],
+                [
+                  81.4955964,
+                  16.8577979
+                ],
+                [
+                  81.495569,
+                  16.8578919
+                ]
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "type": "building",
+            "name": "AIML",
+            "entry_node": [81.4957645, 16.8581048]
+          },
+          "geometry": {
+            "type": "Polygon",
+            "coordinates": [
+              [
+                [
+                  81.4955553,
+                  16.8580581
+                ],
+                [
+                  81.4958682,
+                  16.8580799
+                ],
+                [
+                  81.4958773,
+                  16.8579837
+                ],
+                [
+                  81.4955667,
+                  16.8579575
+                ],
+                [
+                  81.4955553,
+                  16.8580581
+                ]
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "type": "building",
+            "name": "CAI",
+            "entry_node": [81.4955416, 16.8581011]
+          },
+          "geometry": {
+            "type": "Polygon",
+            "coordinates": [
+              [
+                [
+                  81.4955061,
+                  16.8584519
+                ],
+                [
+                  81.4956514,
+                  16.8584587
+                ],
+                [
+                  81.4956836,
+                  16.8581288
+                ],
+                [
+                  81.4955687,
+                  16.8581167
+                ],
+                [
+                  81.4955603,
+                  16.8581891
+                ],
+                [
+                  81.4955337,
+                  16.8581905
+                ],
+                [
+                  81.4955061,
+                  16.8584519
+                ]
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "type": "building",
+            "name": "Diploma",
+            "entry_node": [81.4951692, 16.8585097]
+          },
+          "geometry": {
+            "type": "Polygon",
+            "coordinates": [
+              [
+                [
+                  81.4949013,
+                  16.8586252
+                ],
+                [
+                  81.4954044,
+                  16.8586735
+                ],
+                [
+                  81.4954114,
+                  16.8585756
+                ],
+                [
+                  81.4949097,
+                  16.8585219
+                ],
+                [
+                  81.4949013,
+                  16.8586252
+                ]
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "type": "building",
+            "name": "BSH",
+            "entry_node": [81.4960112, 16.8585757]
+          },
+          "geometry": {
+            "type": "Polygon",
+            "coordinates": [
+              [
+                [
+                  81.4955644,
+                  16.8586909
+                ],
+                [
+                  81.4963646,
+                  16.8587686
+                ],
+                [
+                  81.4963772,
+                  16.8586614
+                ],
+                [
+                  81.4955784,
+                  16.8585889
+                ],
+                [
+                  81.4955644,
+                  16.8586909
+                ]
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "type": "building",
+            "name": "examcell and mba",
+            "entry_node": [81.4951317, 16.8591595]
+          },
+          "geometry": {
+            "type": "Polygon",
+            "coordinates": [
+              [
+                [
+                  81.4948669,
+                  16.8589351
+                ],
+                [
+                  81.4949072,
+                  16.8586787
+                ],
+                [
+                  81.495441,
+                  16.8587423
+                ],
+                [
+                  81.4954007,
+                  16.8589659
+                ],
+                [
+                  81.495302,
+                  16.8589582
+                ],
+                [
+                  81.4953282,
+                  16.8587982
+                ],
+                [
+                  81.4952879,
+                  16.8587905
+                ],
+                [
+                  81.4951911,
+                  16.8589042
+                ],
+                [
+                  81.4951045,
+                  16.8588946
+                ],
+                [
+                  81.4951045,
+                  16.8587655
+                ],
+                [
+                  81.4950642,
+                  16.8587577
+                ],
+                [
+                  81.4950239,
+                  16.8589389
+                ],
+                [
+                  81.4948669,
+                  16.8589351
+                ]
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "type": "placement",
+            "name": "Placement office",
+            "entry_node": [81.4958283, 16.8592706]
+          },
+          "geometry": {
+            "type": "Polygon",
+            "coordinates": [
+              [
+                [
+                  81.4955698,
+                  16.8589544
+                ],
+                [
+                  81.4957792,
+                  16.8589794
+                ],
+                [
+                  81.4957631,
+                  16.8590816
+                ],
+                [
+                  81.4959243,
+                  16.8590893
+                ],
+                [
+                  81.4959363,
+                  16.8589929
+                ],
+                [
+                  81.4961096,
+                  16.8590103
+                ],
+                [
+                  81.4961337,
+                  16.8588021
+                ],
+                [
+                  81.4955939,
+                  16.85875
+                ],
+                [
+                  81.4955698,
+                  16.8589544
+                ]
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "type": "gym",
+            "name": "Gym",
+            "entry_node": [81.4950752, 16.8597423]
+          },
+          "geometry": {
+            "type": "Polygon",
+            "coordinates": [
+              [
+                [
+                  81.4947931,
+                  16.8599092
+                ],
+                [
+                  81.4950236,
+                  16.8599213
+                ],
+                [
+                  81.4950552,
+                  16.8596162
+                ],
+                [
+                  81.4948405,
+                  16.859595
+                ],
+                [
+                  81.49479,
+                  16.8596282
+                ],
+                [
+                  81.4947931,
+                  16.8599092
+                ]
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "type": "canteen",
+            "name": "canteen",
+            "entry_node": [81.4952687, 16.859607]
+          },
+          "geometry": {
+            "type": "Polygon",
+            "coordinates": [
+              [
+                [
+                  81.4950931,
+                  16.8598458
+                ],
+                [
+                  81.4953362,
+                  16.8598669
+                ],
+                [
+                  81.4953235,
+                  16.8596464
+                ],
+                [
+                  81.4950962,
+                  16.8596524
+                ],
+                [
+                  81.4950931,
+                  16.8598458
+                ]
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "type": "building",
+            "name": "Sri vasavi pharmacy college",
+            "entry_node": [81.493377, 16.8594657]
+          },
+          "geometry": {
+            "type": "Polygon",
+            "coordinates": [
+              [
+                [
+                  81.494186,
+                  16.8596004
+                ],
+                [
+                  81.4944417,
+                  16.8596276
+                ],
+                [
+                  81.4944354,
+                  16.8597032
+                ],
+                [
+                  81.4945617,
+                  16.8597213
+                ],
+                [
+                  81.4945807,
+                  16.859534
+                ],
+                [
+                  81.4942018,
+                  16.8594917
+                ],
+                [
+                  81.494186,
+                  16.8596004
+                ]
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "type": "building"
+          },
+          "geometry": {
+            "type": "Polygon",
+            "coordinates": [
+              [
+                [
+                  81.4941702,
+                  16.8597757
+                ],
+                [
+                  81.4944165,
+                  16.8597968
+                ],
+                [
+                  81.4944228,
+                  16.8597122
+                ],
+                [
+                  81.494178,
+                  16.8596918
+                ],
+                [
+                  81.4941702,
+                  16.8597757
+                ]
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "type": "hostel",
+            "name": "boys hostel",
+            "entry_node": [81.4938646, 16.8599479]
+          },
+          "geometry": {
+            "type": "Polygon",
+            "coordinates": [
+              [
+                [
+                  81.4937751,
+                  16.8597543
+                ],
+                [
+                  81.493892,
+                  16.8597636
+                ],
+                [
+                  81.4938823,
+                  16.8598662
+                ],
+                [
+                  81.4938165,
+                  16.8598592
+                ],
+                [
+                  81.4938019,
+                  16.8600272
+                ],
+                [
+                  81.4939042,
+                  16.8600365
+                ],
+                [
+                  81.4938969,
+                  16.8601298
+                ],
+                [
+                  81.4937604,
+                  16.8601181
+                ],
+                [
+                  81.4937702,
+                  16.8600155
+                ],
+                [
+                  81.4937775,
+                  16.8598592
+                ],
+                [
+                  81.4937751,
+                  16.8597543
+                ]
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "type": "gym",
+            "name": "book store",
+            "entry_node": [81.49394, 16.8595049]
+          },
+          "geometry": {
+            "type": "Polygon",
+            "coordinates": [
+              [
+                [
+                  81.4938117,
+                  16.8595349
+                ],
+                [
+                  81.4938873,
+                  16.8595419
+                ],
+                [
+                  81.4938922,
+                  16.8594789
+                ],
+                [
+                  81.4938191,
+                  16.8594719
+                ],
+                [
+                  81.4938117,
+                  16.8595349
+                ]
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "type": "gym",
+            "name": "Mess",
+            "entry_node": [81.4961355, 16.8578264]
+          },
+          "geometry": {
+            "type": "Polygon",
+            "coordinates": [
+              [
+                [
+                  81.4959362,
+                  16.8577508
+                ],
+                [
+                  81.4963144,
+                  16.8577508
+                ],
+                [
+                  81.4963107,
+                  16.8575967
+                ],
+                [
+                  81.49594,
+                  16.8575931
+                ],
+                [
+                  81.4959362,
+                  16.8577508
+                ]
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "type": "building",
+            "name": "mech lab",
+            "entry_node": [81.4961051, 16.858141]
+          },
+          "geometry": {
+            "type": "Polygon",
+            "coordinates": [
+              [
+                [
+                  81.4959591,
+                  16.8580697
+                ],
+                [
+                  81.496225,
+                  16.8580948
+                ],
+                [
+                  81.4962399,
+                  16.8579801
+                ],
+                [
+                  81.4959741,
+                  16.8579586
+                ],
+                [
+                  81.4959591,
+                  16.8580697
+                ]
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "type": "building",
+            "name": "civil lab",
+            "entry_node": [81.4961207, 16.8579505]
+          },
+          "geometry": {
+            "type": "Polygon",
+            "coordinates": [
+              [
+                [
+                  81.4960377,
+                  16.8579156
+                ],
+                [
+                  81.4962062,
+                  16.85793
+                ],
+                [
+                  81.4962137,
+                  16.8578404
+                ],
+                [
+                  81.4960377,
+                  16.8578368
+                ],
+                [
+                  81.4960377,
+                  16.8579156
+                ]
+              ]
+            ]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "type": "hostel",
+            "name": "girls hostel",
+            "entry_node": [81.4968253, 16.8575317]
+          },
+          "geometry": {
+            "type": "Polygon",
+            "coordinates": [
+              [
+                [
+                  81.496796,
+                  16.8574671
+                ],
+                [
+                  81.4969794,
+                  16.8574671
+                ],
+                [
+                  81.4969944,
+                  16.8572485
+                ],
+                [
+                  81.4968147,
+                  16.8572378
+                ],
+                [
+                  81.496796,
+                  16.8574671
+                ]
+              ]
+            ]
+          }
+        }
+      ]
+    };</script>
+  <!-- App Logic -->
+  <script src="app.js?v=4.3"></script>
+  </body>
+
+</html>
