@@ -40,7 +40,9 @@ const state = {
     lastSpokenInstruction: "",
     lastBearing: 0,
     femaleVoice: null, // Cache for selected female voice
-    spokenNodes: new Set() // Track nodes we've already announced a turn for
+    targetPath: null,
+    spokenNodes: new Set(), // Track nodes we've already announced a turn for
+    firstStepSpoken: false
 };
 
 /* =========================================
@@ -421,6 +423,7 @@ function stopNavigation() {
     elements.stopBtnMobile.classList.add('hidden'); // Hide mobile exit button
     elements.hudPanel.classList.add('hidden'); // Hide mobile HUD
     state.spokenNodes.clear();
+    state.firstStepSpoken = false;
 
     elements.destSearch.disabled = false;
     elements.destSearch.value = "";
@@ -566,10 +569,13 @@ function drawRoute(pathCoords, userCoords, startNode) {
 
 function generateInstructions(pathCoords, destNode) {
     elements.instructionsList.innerHTML = '';
-    let isFirst = true;
     const addAndSpeak = (text, icon) => {
         addInstruction(text, icon);
-        if (isFirst) { speakInstruction(text); isFirst = false; }
+        if (isFirst && !state.firstStepSpoken) {
+            speakInstruction(text);
+            isFirst = false;
+            state.firstStepSpoken = true;
+        }
     };
 
     if (pathCoords.length < 2) {
@@ -716,3 +722,4 @@ document.addEventListener('DOMContentLoaded', () => {
 
     elements.stopBtnMobile.addEventListener('click', stopNavigation);
 });
+
